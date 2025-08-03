@@ -22,24 +22,45 @@ function setup() {
 
 function draw() {
   background(currentImage === 0 ? '#1E90FF' : '#FF4444');
-  image(images[currentImage], width/2, height/2);
+
+  // ขนาดภาพที่ฟิตจอ โดยยังรักษาสัดส่วนเดิม
+  let img = images[currentImage];
+  let scaleFactor = min(width / img.width, height / img.height) * 0.6;
+  let imgW = img.width * scaleFactor;
+  let imgH = img.height * scaleFactor;
+  image(img, width / 2, height / 2, imgW, imgH);
 
   image(leftHandImg, leftButton.x, leftButton.y, leftButton.size, leftButton.size);
   image(rightHandImg, rightButton.x, rightButton.y, rightButton.size, rightButton.size);
 }
 
+// Desktop
 function mousePressed() {
-  if (dist(mouseX, mouseY, leftButton.x, leftButton.y) < leftButton.size / 2) {
-    currentImage = 1;
-  }
-
-  if (dist(mouseX, mouseY, rightButton.x, rightButton.y) < rightButton.size / 2) {
-    currentImage = 2;
-  }
+  handlePress(mouseX, mouseY);
 }
 
 function mouseReleased() {
   currentImage = 0;
+}
+
+// Mobile
+function touchStarted() {
+  handlePress(touchX, touchY);
+  return false;
+}
+
+function touchEnded() {
+  currentImage = 0;
+  return false;
+}
+
+function handlePress(x, y) {
+  if (dist(x, y, leftButton.x, leftButton.y) < leftButton.size / 2) {
+    currentImage = 1;
+  }
+  if (dist(x, y, rightButton.x, rightButton.y) < rightButton.size / 2) {
+    currentImage = 2;
+  }
 }
 
 function windowResized() {
