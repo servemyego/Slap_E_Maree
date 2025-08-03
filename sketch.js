@@ -15,11 +15,15 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(360, 640);
+  createCanvas(windowWidth, windowHeight);
   imageMode(CENTER);
 
   leftButton = { x: 80, y: height - 80, size: 80 };
   rightButton = { x: width - 80, y: height - 80, size: 80 };
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
 
 function draw() {
@@ -50,4 +54,14 @@ function mousePressed() {
 
 function mouseReleased() {
   currentImage = 0; // กลับเป็นรูปเริ่มต้น
+}
+
+function touchStarted() {
+  if (dist(mouseX, mouseY, leftButton.x, leftButton.y) < leftButton.size / 2) {
+    currentImage = 1;
+  }
+
+  if (dist(mouseX, mouseY, rightButton.x, rightButton.y) < rightButton.size / 2) {
+    currentImage = 2;
+  }
 }
