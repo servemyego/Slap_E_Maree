@@ -1,66 +1,32 @@
-let currentImage = 0;
-let images = [];
-let leftButton, rightButton;
-let leftHandImg, rightHandImg;
+let img;
+let aspectRatio = 360 / 640; // อัตราส่วนต้นฉบับ (กว้าง/สูง) เช่น 360x640
 
 function preload() {
-  images[0] = loadImage('woman_8bit.png');
-  images[1] = loadImage('alt_image_1.png');
-  images[2] = loadImage('alt_image_2.png');
-
-  leftHandImg = loadImage('left-hand.png');
-  rightHandImg = loadImage('right-hand.png');
+  img = loadImage("woman_8bit.png"); // เปลี่ยนชื่อไฟล์ให้ตรงกับโปรเจกต์
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
   imageMode(CENTER);
-
-  leftButton = { x: 80, y: height - 80, size: 80 };
-  rightButton = { x: width - 80, y: height - 80, size: 80 };
 }
 
 function draw() {
-  background(currentImage === 0 ? '#1E90FF' : '#FF4444');
+  background('#FF4B4B'); // สีพื้นหลัง
 
-  // ขนาดภาพที่ฟิตจอ โดยยังรักษาสัดส่วนเดิม
-  let img = images[currentImage];
-  let scaleFactor = min(width / img.width, height / img.height) * 0.6;
-  let imgW = img.width * scaleFactor;
-  let imgH = img.height * scaleFactor;
-  image(img, width / 2, height / 2, imgW, imgH);
+  let canvasAspect = width / height;
+  let drawWidth, drawHeight;
 
-  image(leftHandImg, leftButton.x, leftButton.y, leftButton.size, leftButton.size);
-  image(rightHandImg, rightButton.x, rightButton.y, rightButton.size, rightButton.size);
-}
-
-// Desktop
-function mousePressed() {
-  handlePress(mouseX, mouseY);
-}
-
-function mouseReleased() {
-  currentImage = 0;
-}
-
-// Mobile
-function touchStarted() {
-  handlePress(touchX, touchY);
-  return false;
-}
-
-function touchEnded() {
-  currentImage = 0;
-  return false;
-}
-
-function handlePress(x, y) {
-  if (dist(x, y, leftButton.x, leftButton.y) < leftButton.size / 2) {
-    currentImage = 1;
+  if (canvasAspect > aspectRatio) {
+    // จอฟิตความสูง (มือถือแนวนอน)
+    drawHeight = height;
+    drawWidth = drawHeight * aspectRatio;
+  } else {
+    // จอฟิตความกว้าง (มือถือแนวตั้ง)
+    drawWidth = width;
+    drawHeight = drawWidth / aspectRatio;
   }
-  if (dist(x, y, rightButton.x, rightButton.y) < rightButton.size / 2) {
-    currentImage = 2;
-  }
+
+  image(img, width / 2, height / 2, drawWidth, drawHeight);
 }
 
 function windowResized() {
