@@ -1,32 +1,42 @@
+let baseW = 380;
+let baseH = 640;
 let img;
-let aspectRatio = 360 / 640; // อัตราส่วนต้นฉบับ (กว้าง/สูง) เช่น 360x640
+let scaleFactor;
 
 function preload() {
-  img = loadImage("woman_8bit.png"); // เปลี่ยนชื่อไฟล์ให้ตรงกับโปรเจกต์
+  img = loadImage("woman_8bit.png"); // ใส่ชื่อไฟล์ภาพให้ตรงกับโปรเจกต์
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  imageMode(CENTER);
+  imageMode(CORNER);
 }
 
 function draw() {
-  background('#FF4B4B'); // สีพื้นหลัง
+  background('#FF4B4B');
 
-  let canvasAspect = width / height;
-  let drawWidth, drawHeight;
+  // หาสเกลที่เหมาะสมที่สุดเพื่อให้ภาพไม่หลุดขอบ
+  scaleFactor = min(width / baseW, height / baseH);
 
-  if (canvasAspect > aspectRatio) {
-    // จอฟิตความสูง (มือถือแนวนอน)
-    drawHeight = height;
-    drawWidth = drawHeight * aspectRatio;
-  } else {
-    // จอฟิตความกว้าง (มือถือแนวตั้ง)
-    drawWidth = width;
-    drawHeight = drawWidth / aspectRatio;
-  }
+  // คำนวณตำแหน่งเริ่มต้นให้ภาพอยู่กลางจอ
+  let offsetX = (width - baseW * scaleFactor) / 2;
+  let offsetY = (height - baseH * scaleFactor) / 2;
 
-  image(img, width / 2, height / 2, drawWidth, drawHeight);
+  push();
+  translate(offsetX, offsetY);
+  scale(scaleFactor);
+
+  // วาดภาพพื้นหลัง (ขนาด 380x640)
+  image(img, 0, 0, baseW, baseH);
+
+  // วาดปุ่มด้านซ้ายล่าง
+  fill(255);
+  ellipse(40, baseH - 40, 50, 50);
+
+  // วาดปุ่มด้านขวาล่าง
+  ellipse(baseW - 40, baseH - 40, 50, 50);
+
+  pop();
 }
 
 function windowResized() {
