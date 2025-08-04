@@ -13,7 +13,7 @@ function setup() {
 }
 
 function draw() {
-  background('#FF4D4D');
+  background('#FF4B4B');
 
   // หาสเกลที่เหมาะสมที่สุดเพื่อให้ภาพไม่หลุดขอบ
   scaleFactor = min(width / baseW, height / baseH);
