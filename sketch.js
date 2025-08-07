@@ -14,13 +14,6 @@ let button1Img, button2Img; // ตัวแปรเก็บรูปปุ่�
 let buttonSize = 120; // ขนาดปุ่มที่ต้องการ (สามารถเปลี่ยนได้)
 let buttonScaleLeft = 1;
 let buttonScaleRight = 1;
-let handLeftImg, handRightImg;
-let slapFrameLeft = 0;
-let slapFrameRight = 0;
-let handW = 200; // ความกว้างมือ
-let handH = 200; // ความสูงมือ
-let playAgainImg;
-
 
 function preload() {
   img = loadImage("woman_8bit.png");      
@@ -28,9 +21,6 @@ function preload() {
   altImg2 = loadImage("alt_image_2.png"); 
   button1Img = loadImage('Button_1.png'); // โหลดปุ่มซ้าย
   button2Img = loadImage('Button_2.png'); // โหลดปุ่มขวา
-  handLeftImg = loadImage("hand_left.png");   // โหลดภาพมือซ้าย
-  handRightImg = loadImage("hand_right.png"); // โหลดภาพมือขวา
-  playAgainImg = loadImage('play_again.png'); // เปลี่ยนเป็นชื่อไฟล์/พาธจริงของรูป
 
   punchSound1 = loadSound("punch1.mp3");  
   punchSound2 = loadSound("punch2.mp3");  
@@ -82,25 +72,7 @@ function draw() {
     } else {
       image(img, 0, 0, baseW, baseH);
     }
-    
-// วาดมือซ้าย
-  if (slapFrameLeft > 0) {
-    let progress = (4 - slapFrameLeft) / 4; // 0 → 1
-    let handX = -25 + progress * 100; // จากซ้ายเข้ามา 50px
-    let handY = baseH / 2 - 100;
-    image(handLeftImg, handX, handY, 200, 200);
-    slapFrameLeft--;
-  }
 
-  // วาดมือขวา
-  if (slapFrameRight > 0) {
-    let progress = (4 - slapFrameRight) / 4;
-    let handX = baseW - -25 - handW - progress * 100; // เริ่มที่ 50px จากขวา
-    let handY = baseH / 2 - 100;
-    image(handRightImg, handX, handY, 200, 200);
-    slapFrameRight--;
-  }
-    
     // ปุ่มซ้าย
 image(
   button1Img,
@@ -156,14 +128,12 @@ image(
 
     // แสดง Slap Count
     textSize(48);
-    fill('#FFD700');
     text(`Slap Count : ${slapCount}`, baseW / 2, baseH / 2);
 
     // ปุ่ม Play Again
-    // ปุ่ม Play Again เป็นรูป
-    imageMode(CENTER);
-    image(playAgainImg, baseW / 2, baseH / 2 + 100, 200, 200);
-
+    textSize(30);
+    fill('#FFD700');
+    text("PLAY AGAIN", baseW / 2, baseH / 2 + 100);
 
     pop();
 }
@@ -171,87 +141,72 @@ image(
 }
 
 function handlePress(x, y) {
-    if (gameState === "gameover") {
-        // ตรวจปุ่ม Play Again
-        let btnX = width / 2;
-        let btnY = height / 2 + 100;
-        if (dist(x, y, btnX, btnY) < 100) {
-            restartGame();
-        }
-        return;
+  if (gameState === "gameover") {
+    // ตรวจปุ่ม Play Again
+    let btnX = width / 2;
+    let btnY = height / 2 + 100;
+    if (dist(x, y, btnX, btnY) < 100) {
+      restartGame();
+      return;
     }
+    return;
+  }
 
-    // แปลงพิกัดเป็นพิกัดในเกม
-    let scaleFactor = min(width / baseW, height / baseH);
-    let offsetX = (width - baseW * scaleFactor) / 2;
-    let offsetY = (height - baseH * scaleFactor) / 2;
-    let imgX = (x - offsetX) / scaleFactor;
-    let imgY = (y - offsetY) / scaleFactor;
+  let scaleFactor = min(width / baseW, height / baseH);
+  let offsetX = (width - baseW * scaleFactor) / 2;
+  let offsetY = (height - baseH * scaleFactor) / 2;
+  let imgX = (x - offsetX) / scaleFactor;
+  let imgY = (y - offsetY) / scaleFactor;
 
-    // ปุ่มซ้าย
-    let dLeft = dist(imgX, imgY, 80, baseH - 60);
-    if (dLeft < buttonSize / 2) {
-        buttonScaleLeft = 1.25;
-        slapFrameLeft = 4; // ค้างมือซ้าย
-        currentImage = 2;
-        bgColor = color('#FF0000');
-        slapCount++;
-        if (punchSound1.isLoaded()) punchSound1.play();
-        return;
-    }
+  // ปุ่มซ้าย
+  let dLeft = dist(imgX, imgY, 80, baseH - 60);
+  if (dLeft < buttonSize / 2) {
+    buttonScaleLeft = 1.25; // ขยายเฉพาะปุ่มซ้าย
+    currentImage = 2;
+    bgColor = color('#FF0000');
+    slapCount++;
+    if (punchSound1.isLoaded()) punchSound1.play();
+    return;
+  }
 
-    // ปุ่มขวา
-    let dRight = dist(imgX, imgY, baseW - 80, baseH - 60);
-    if (dRight < buttonSize / 2) {
-        buttonScaleRight = 1.25;
-        slapFrameRight = 4; // ค้างมือขวา
-        currentImage = 1;
-        bgColor = color('#FF0000');
-        slapCount++;
-        if (punchSound2.isLoaded()) punchSound2.play();
-        return;
-    }
+  // ปุ่มขวา
+  let dRight = dist(imgX, imgY, baseW - 80, baseH - 60);
+  if (dRight < buttonSize / 2) {
+    buttonScaleRight = 1.25; // ขยายเฉพาะปุ่มขวา
+    currentImage = 1;
+    bgColor = color('#FF0000');
+    slapCount++;
+    if (punchSound2.isLoaded()) punchSound2.play();
+    return;
+  }
 }
 
 function handleRelease() {
-    if (gameState === "playing") {
-        currentImage = 0;
-        bgColor = color('#2443ad');
-
-        // รีเซ็ตปุ่ม
-        buttonScaleLeft = 1;
-        buttonScaleRight = 1;
-
-        // รีเซ็ตการแสดงมือ
-        slapFrameLeft = 0;
-        slapFrameRight = 0;
-    }
+  if (gameState === "playing") {
+    currentImage = 0;
+    bgColor = color('#2443ad');
+    buttonScaleLeft = 1;  // รีเซ็ตปุ่มซ้าย
+    buttonScaleRight = 1; // รีเซ็ตปุ่มขวา
+  }
 }
 
-
-
-// รองรับเมาส์
 function mousePressed() {
-    handlePress(mouseX, mouseY);
+  handlePress(mouseX, mouseY);
 }
 
 function mouseReleased() {
-    handleRelease();
+  handleRelease();
 }
 
-// รองรับมือถือ/จอสัมผัส
 function touchStarted() {
-    if (touches.length > 0) {
-        handlePress(touches[0].x, touches[0].y);
-    }
-    return false; // ป้องกันการ scroll หน้าเว็บ
+  handlePress(touchX, touchY);
+  return false;
 }
 
 function touchEnded() {
-    handleRelease();
-    return false;
+  handleRelease();
+  return false;
 }
-
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
