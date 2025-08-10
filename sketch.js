@@ -38,12 +38,12 @@ let startBtnScale = 1;
 let startBtnTarget = 1;
 let startPressing = false;
 let startIdlePhase = 0;
-let startBtnDelay = 0; // 0 = ไม่หน่วง, >0 = กำลังนับถอยหลัง
+let startBtnDelay = 0;            // 0 = ไม่หน่วง, >0 = กำลังนับถอยหลัง
+let ignoreNextRelease = false;    // กัน release ครั้งแรกหลังกลับ start
 
-
-const START_IDLE_MIN = 0.96;
+const START_IDLE_MIN = 0.86;
 const START_IDLE_MAX = 1.06;
-const START_IDLE_SPEED = 0.0070;
+const START_IDLE_SPEED = 0.0090;
 
 const START_PRESS_SCALE = 1.18;
 const START_LERP = 0.18;
@@ -78,7 +78,6 @@ let playAgainFrames = 0;
 const PLAY_AGAIN_BOUNCE = 1.25;       // ขยาย 25%
 const PLAY_AGAIN_DELAY_FRAMES = 15;   // หน่วง 15 เฟรมก่อน restart
 
-
 let slapLinger = 0; // ค้างภาพหลังปล่อยกี่เฟรม
 
 let lastPunchTime = 0;
@@ -108,7 +107,7 @@ function initCtxOnce() {
 // ✅ โหลดเฉพาะเสียงปุ่ม (ไฟล์เล็ก → เร็ว)
 async function loadButtonSound() {
   if (!ctx || buttonBuf) return;
-  buttonBuf = await loadBuffer("button.mp3"); // แนะนำ .wav จะไวกว่า
+  buttonBuf = await loadBuffer("button.wav"); // แนะนำ .wav จะไวกว่า
 }
 
 // ✅ โหลดเสียงที่เหลือ (ทำตามหลัง)
@@ -249,6 +248,12 @@ function draw() {
     translate(ox, oy);
     scale(s);
 
+    // === เริ่ม crop ===
+    drawingContext.save();
+    drawingContext.beginPath();
+    drawingContext.rect(0, 0, baseW, baseH);
+    drawingContext.clip();
+
     // ===== พื้นหลังลูป (anti-seam) =====
     if (bgTile) {
       bgScrollX = (bgScrollX + BG_SPEED_X) % bgTile.width;
@@ -295,25 +300,27 @@ function draw() {
       textAlign(CENTER, CENTER);
       textSize(28 * startBtnScale);
       text("PLAY", START_BTN_CX, START_BTN_CY + 2);
-      pop();
+      pop(); // <-- ขาด pop() มาก่อนหน้านี้
     }
-    
-if (startBtnDelay > 0) {
-    startBtnDelay--;
-    if (startBtnDelay === 0) {
-      gameState = "playing";
-    }
-  }
 
-    // ===== ข้อความลิขสิทธิ์ด้านล่างสุดของจอ =====
-fill(255); // สีขาว
-textAlign(CENTER, BOTTOM);
-textSize(24);
-text("©2025, EGO_SPACE Games", baseW / 2, baseH - 10);
-    
+    // หน่วง 15 เฟรมก่อนเข้าเกม (หลังเริ่มกด)
+    if (startBtnDelay > 0) {
+      startBtnDelay--;
+      if (startBtnDelay === 0) {
+        restartGameFromTitle();   // รีเซ็ตตัวแปรแล้วเข้าเกม
+      }
+    }
+
+    drawingContext.restore(); // ปิด clip
+
+    // ข้อความลิขสิทธิ์ใน canvas (ล่างของ base 380×640)
+    fill(255);
+    textAlign(CENTER, BOTTOM);
+    textSize(23);
+    text("©2025, EGO_SPACE Games", baseW / 2, baseH - 10);
+
     pop();
     return; // ไม่ไปวาดส่วนอื่น
-    
   }
 
   // ===== PLAYING =====
@@ -361,14 +368,14 @@ text("©2025, EGO_SPACE Games", baseW / 2, baseH - 10);
     imageMode(CENTER);
     if (slapFrameLeft > 0) {
       const p = (HAND_FRAMES - slapFrameLeft) / HAND_FRAMES;
-      const cx = (0 + handW/2) + p * 200;   // เริ่มซ้ายขอบ เข้ามา 200px
+      const cx = (0 + handW/2) + p * 200;
       const cy = baseH / 2 + 25;
       image(handLeftImg, cx, cy, handW, handH);
       slapFrameLeft--;
     }
     if (slapFrameRight > 0) {
       const p = (HAND_FRAMES - slapFrameRight) / HAND_FRAMES;
-      const cx = (baseW - handW/2) - p * 200; // เริ่มขวาขอบ เข้ามา 200px
+      const cx = (baseW - handW/2) - p * 200;
       const cy = baseH / 2 + 25;
       image(handRightImg, cx, cy, handW, handH);
       slapFrameRight--;
@@ -404,67 +411,80 @@ text("©2025, EGO_SPACE Games", baseW / 2, baseH - 10);
     // HUD
     textAlign(LEFT, TOP);
     fill("#FFD700");
-    textSize(30);
-    text(`Slap : ${slapCount}`, 10, 10);
+    textSize(40);
+    text(`Slap : ${slapCount}`, 10, 2);
 
     textAlign(RIGHT, TOP);
-    fill("#FFFFFF"); // ให้เห็นชัดบนพื้นขาว
-    textSize(30);
-    text(`Time : ${timeLeft} `, baseW - 10, 10);
+    fill("#FFFFFF");
+    textSize(40);
+    text(`Time : ${timeLeft} `, baseW - -5, 2);
 
     pop();
+    return;
   }
 
   // ===== GAMEOVER =====
-  // ===== GAMEOVER =====
-else if (gameState === "gameover") {
-  const s = Math.min(width / baseW, height / baseH);
-  const ox = (width - baseW * s) / 2;
-  const oy = (height - baseH * s) / 2;
+  else if (gameState === "gameover") {
 
-  push();
-  translate(ox, oy);
-  scale(s);
+    // พื้นหลังเต็มจอเป็นสีขาว
+    background(255);
 
-  fill("#FFFFFF");
-  textAlign(CENTER, CENTER);
-  textSize(60);
-  text("GAME OVER", baseW / 2, baseH / 2 - 60);
+    const s = Math.min(width / baseW, height / baseH);
+    const ox = (width - baseW * s) / 2;
+    const oy = (height - baseH * s) / 2;
 
-  textSize(48);
-  fill("#FFD700");
-  text(`Slap Count : ${slapCount}`, baseW / 2, baseH / 2);
-  
-  // ===== ข้อความลิขสิทธิ์ด้านล่างสุดของจอ =====
-fill(255); // สีขาว
-textAlign(CENTER, BOTTOM);
-textSize(24);
-text("©2025, EGO_SPACE Games", baseW / 2, baseH - 10);
+    push();
+    translate(ox, oy);
+    scale(s);
 
-  // ---- ปุ่ม Play Again (มีอนิเมชัน) ----
-  imageMode(CENTER);
-  const btnCX = baseW / 2;
-  const btnCY = baseH / 2 + 100;
-  const baseBtnW = 200, baseBtnH = 200;
+    // กล่องพื้นหลังพอดีขนาด baseW × baseH
+    noStroke();
+    fill("#F12718");
+    rect(0, 0, baseW, baseH);
 
-  // ถ้ากำลังอนิเมต ให้ค่อยๆ เข้าเป้าสเกล 1.25 และนับเฟรม
-  if (playAgainAnimating) {
-    playAgainScale = lerp(playAgainScale, PLAY_AGAIN_BOUNCE, 0.35);
-    playAgainFrames++;
-    if (playAgainFrames >= PLAY_AGAIN_DELAY_FRAMES) {
-      // จบหน่วง → รีสตาร์ทเกม
-      playAgainAnimating = false;
-      playAgainScale = 1;
-      restartGame();
-      pop();
-      return; // ออกจากสาขานี้เพราะ state เปลี่ยนแล้ว
+    fill("#FFFFFF");
+    textAlign(CENTER, CENTER);
+    textSize(60);
+    text("GAME OVER", baseW / 2, baseH / 2 - 60);
+
+    textSize(48);
+    fill("#FFD700");
+    text(`Total Slap : ${slapCount}`, baseW / 2, baseH / 2);
+
+    // ข้อความลิขสิทธิ์ใน canvas
+    fill(255);
+    textAlign(CENTER, BOTTOM);
+    textSize(23);
+    text("©2025, EGO_SPACE Games", baseW / 2, baseH - 10);
+
+    // ปุ่ม Main Menu (ตัวหนังสือ)
+    fill(0);
+    textSize(32);
+    text("MAIN MENU", baseW / 2, baseH / 2 + 170);
+
+    // ---- ปุ่ม Play Again (มีอนิเมชัน) ----
+    imageMode(CENTER);
+    const btnCX = baseW / 2;
+    const btnCY = baseH / 2 + 100;
+    const baseBtnW = 296/1.5, baseBtnH = 96/1.5;
+
+    if (playAgainAnimating) {
+      playAgainScale = lerp(playAgainScale, PLAY_AGAIN_BOUNCE, 0.35);
+      playAgainFrames++;
+      if (playAgainFrames >= PLAY_AGAIN_DELAY_FRAMES) {
+        playAgainAnimating = false;
+        playAgainScale = 1;
+        restartGame();
+        pop();
+        return;
+      }
     }
+
+    image(playAgainImg, btnCX, btnCY, baseBtnW * playAgainScale, baseBtnH * playAgainScale);
+
+    pop();
+    return;
   }
-
-  image(playAgainImg, btnCX, btnCY, baseBtnW * playAgainScale, baseBtnH * playAgainScale);
-
-  pop();
-}
 }
 
 /* =======================
@@ -478,26 +498,50 @@ function handlePress(x, y) {
   const imgX = (x - ox) / s;
   const imgY = (y - oy) / s;
 
-  // ====== GAME OVER: ปุ่ม Play Again ======
- if (gameState === "gameover") {
-  const btnX = baseW / 2;
-  const btnY = baseH / 2 + 100;
+  // ===== GAME OVER =====
+  if (gameState === "gameover") {
+    // Main Menu (ตัวหนังสือ)
+    const textY = baseH / 2 + 170;
+    if (imgY > textY - 20 && imgY < textY + 20 &&
+        imgX > baseW/2 - 60 && imgX < baseW/2 + 60) {
+      stopAllAudio();
+      initCtxOnce();
+      ensureResume();
+      playButtonSound();
 
-  // กดซ้ำระหว่างอนิเมชันไม่ต้องทำอะไร
-  if (!playAgainAnimating && dist(imgX, imgY, btnX, btnY) < 80) {
-    initCtxOnce();
-    ensureResume();
-    playButtonSound();        // 🔊 เล่นเสียงทันทีตอนกด
-    // เริ่มอนิเมชันเด้ง + หน่วง
-    playAgainAnimating = true;
-    playAgainFrames = 0;
-    playAgainScale = 1;       // เริ่มเด้งจากสเกล 1
+      // กลับสู่หน้า start และกันปล่อยคลิกเดิม
+      gameState = "start";
+      bgColor = color("#FFFFFF");
+      startPressing = false;
+      startBtnTarget = 1;
+      startBtnDelay = 0;
+      ignoreNextRelease = true;
+
+      // เคลียร์เอฟเฟกต์
+      playAgainAnimating = false;
+      playAgainFrames = 0;
+      playAgainScale = 1;
+      impactFx.active = false;
+      return;
+    }
+
+    // Play Again (วงกลมรัศมี ~80)
+    const btnX = baseW / 2;
+    const btnY = baseH / 2 + 100;
+    if (!playAgainAnimating && dist(imgX, imgY, btnX, btnY) < 80) {
+      initCtxOnce();
+      ensureResume();
+      playButtonSound();
+      playAgainAnimating = true;
+      playAgainFrames = 0;
+      playAgainScale = 1;
+      return;
+    }
+
+    return;
   }
-  return;
-}
 
-
-  // ====== PLAYING: ปุ่มซ้าย/ขวา ======
+  // ===== PLAYING: ปุ่มซ้าย/ขวา =====
   if (gameState !== "playing") return;
 
   // ปุ่มซ้าย
@@ -562,25 +606,24 @@ function mousePressed() {
                   Math.abs(imgY - START_BTN_CY) <= btnH/2;
 
     if (inBtn) {
-  startPressing = true;
-  startBtnTarget = START_PRESS_SCALE;
+      startPressing = true;
+      startBtnTarget = START_PRESS_SCALE;
 
-  initCtxOnce();
-  ensureResume();
+      initCtxOnce();
+      ensureResume();
 
-  // เล่นเสียงปุ่มทันที
-  loadButtonSound().then(() => { playButtonSound(); });
+      // เล่นเสียงปุ่มทันที
+      loadButtonSound().then(() => { playButtonSound(); });
 
-  // โหลดเสียงอื่นๆ ต่อ
-  loadRestAudio().then(() => { playBGM(); });
+      // โหลดเสียงอื่นๆ ต่อ
+      loadRestAudio().then(() => { playBGM(); });
 
-  // เริ่มหน่วงเวลา 15 เฟรม
-  startBtnDelay = 15;
+      // เริ่มหน่วงเวลา 15 เฟรม
+      startBtnDelay = 15;
 
-  return;
-}
+      return;
+    }
   }
-  
 
   if (gameState === "gameover") {
     handlePress(mouseX, mouseY);
@@ -595,10 +638,15 @@ function mousePressed() {
 
 function mouseReleased() {
   if (gameState === "start") {
+    if (ignoreNextRelease) {
+      ignoreNextRelease = false;
+      return;
+    }
     if (startPressing) {
       startPressing = false;
       startBtnTarget = 1;
-      gameState = "playing";
+      // ใช้ดีเลย์ 15 เฟรม (ปล่อยให้ draw() เริ่มเกมให้)
+      startBtnDelay = 15;
     }
     return;
   }
@@ -620,23 +668,18 @@ function touchStarted() {
                   Math.abs(imgY - START_BTN_CY) <= btnH/2;
 
     if (inBtn) {
-  startPressing = true;
-  startBtnTarget = START_PRESS_SCALE;
+      startPressing = true;
+      startBtnTarget = START_PRESS_SCALE;
 
-  initCtxOnce();
-  ensureResume();
+      initCtxOnce();
+      ensureResume();
 
-  // เล่นเสียงปุ่มทันที
-  loadButtonSound().then(() => { playButtonSound(); });
+      loadButtonSound().then(() => { playButtonSound(); });
+      loadRestAudio().then(() => { playBGM(); });
 
-  // โหลดเสียงอื่นๆ ต่อ
-  loadRestAudio().then(() => { playBGM(); });
-
-  // เริ่มหน่วงเวลา 15 เฟรม
-  startBtnDelay = 15;
-
-  return;
-}
+      startBtnDelay = 15;
+      return false;
+    }
   }
 
   if (gameState === "gameover") {
@@ -654,10 +697,14 @@ function touchStarted() {
 
 function touchEnded() {
   if (gameState === "start") {
+    if (ignoreNextRelease) {
+      ignoreNextRelease = false;
+      return false;
+    }
     if (startPressing) {
       startPressing = false;
       startBtnTarget = 1;
-      gameState = "playing";
+      startBtnDelay = 15;  // ให้ draw() เริ่มเกมเมื่อครบดีเลย์
     }
     return false;
   }
@@ -682,9 +729,30 @@ function windowResized() { resizeCanvas(windowWidth, windowHeight); }
 ======================= */
 function gameOver() {
   gameState = "gameover";
-  bgColor = color("#F12718"); // ตั้งสีพื้นหลัง Game Over ที่นี่ครั้งเดียว
+  bgColor = color("#FFFFFF");
   stopBGM();
   playEndMusic();
+}
+
+function restartGameFromTitle() {
+  stopAllAudio();
+  slapCount = 0;
+  timeLeft = 30;
+  currentImage = 0;
+  bgColor = color("#FFFFFF");
+  buttonScaleLeft = 1;
+  buttonScaleRight = 1;
+  slapFrameLeft = 0;
+  slapFrameRight = 0;
+  slapLinger = 0;
+  impactFx.active = false;
+  playAgainAnimating = false;
+  playAgainFrames = 0;
+  playAgainScale = 1;
+
+  lastTimeUpdate = millis();
+  gameState = "playing";
+  playBGM();
 }
 
 function restartGame() {
@@ -698,6 +766,7 @@ function restartGame() {
   buttonScaleRight = 1;
   slapFrameLeft = 0;
   slapFrameRight = 0;
+  slapLinger = 0;
   lastTimeUpdate = millis();
   playBGM();
 }
